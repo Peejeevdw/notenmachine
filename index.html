@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notenmachine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+:root{
+  --paper:#F4F7EE; --grid:#DCE5CF; --ink:#1E2A1A; --muted:#5F6F58;
+  --lemon:#FFD83D; --lemon-deep:#E8B800; --leaf:#4F9A2A; --leaf-soft:#E3F1D6;
+  --wrong:#D8452B; --wrong-soft:#FBE3DD; --card:#FFFFFF; --sheet:#FFFFFF; --line:#C9D4BD;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141A12; --grid:#1F281B; --ink:#EEF3E8; --muted:#A3B198;
+    --leaf:#7CC44E; --leaf-soft:#233419; --wrong:#FF7A5C; --wrong-soft:#3A1E18;
+    --card:#1D2519; --sheet:#FBFCF8; --line:#34422C;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141A12; --grid:#1F281B; --ink:#EEF3E8; --muted:#A3B198;
+  --leaf:#7CC44E; --leaf-soft:#233419; --wrong:#FF7A5C; --wrong-soft:#3A1E18;
+  --card:#1D2519; --sheet:#FBFCF8; --line:#34422C;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; min-height:100vh; color:var(--ink);
+  font-family:"Baloo 2", ui-rounded, "Nunito", system-ui, sans-serif;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+main{max-width:1000px; margin:0 auto; padding:20px 16px 40px}
+header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px}
+h1{margin:0; font-size:clamp(1.8rem,5vw,2.6rem); font-weight:800; line-height:1; color:var(--leaf)}
+.score{font-size:1.1rem; color:var(--muted); font-weight:700}
+.score b{color:var(--ink)}
+.settings{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 20px}
+.chip{
+  font:inherit; font-weight:700; font-size:1rem; padding:6px 14px; border-radius:999px;
+  border:2px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer;
+}
+.chip[aria-pressed="true"]{background:var(--lemon); border-color:var(--lemon-deep); color:#1E2A1A}
+.sep{width:2px; background:var(--line); margin:0 4px; border-radius:2px}
+
+.reel{display:grid; grid-template-columns:repeat(var(--n,6),minmax(0,1fr)); gap:10px}
+@media (max-width:720px){ .reel{grid-template-columns:repeat(3,minmax(0,1fr))} .reel[data-n="4"]{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.slot{
+  font:inherit; color:inherit; text-align:center; cursor:pointer; padding:8px 8px 10px;
+  background:var(--card); border:3px solid var(--line); border-radius:16px;
+  display:flex; flex-direction:column; gap:8px; min-width:0;
+}
+.slot.active{border-color:var(--lemon-deep); box-shadow:0 0 0 4px color-mix(in srgb,var(--lemon) 45%,transparent)}
+.slot.ok{border-color:var(--leaf); background:var(--leaf-soft)}
+.slot.bad{border-color:var(--wrong); background:var(--wrong-soft)}
+.sheet{background:var(--sheet); border-radius:10px; overflow:hidden}
+.sheet svg{display:block; width:100%; height:auto}
+.answer{min-height:2.2rem; font-size:1.35rem; font-weight:800; line-height:2.2rem; border-radius:10px; background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.answer.empty{color:var(--muted); font-weight:500}
+.answer s{color:var(--wrong); text-decoration-thickness:3px; margin-right:6px}
+.answer .fix{color:var(--leaf)}
+
+.keys{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; margin:22px 0 16px}
+.key{
+  font:inherit; font-size:clamp(1.1rem,3.6vw,1.6rem); font-weight:800; padding:10px 0;
+  border-radius:14px; border:0; cursor:pointer; color:#1E2A1A; background:var(--lemon);
+  box-shadow:0 4px 0 var(--lemon-deep);
+}
+.key:active{transform:translateY(3px); box-shadow:0 1px 0 var(--lemon-deep)}
+.key:disabled{opacity:.4; cursor:default}
+.actions{display:flex; flex-wrap:wrap; gap:10px; justify-content:center}
+.btn{
+  font:inherit; font-size:1.15rem; font-weight:800; padding:10px 26px; border-radius:999px; cursor:pointer;
+  border:3px solid var(--leaf); background:var(--card); color:var(--leaf);
+}
+.btn.primary{background:var(--leaf); color:#fff}
+.btn:disabled{opacity:.45; cursor:default}
+.result{text-align:center; font-size:1.5rem; font-weight:800; min-height:2.4rem; margin-top:14px}
+button{touch-action:manipulation; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none}
+.result{margin:14px 0 0}
+.keys{margin:10px 0 16px}
+@media (max-width:720px){
+  main{padding:14px 12px calc(210px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:1.9rem}
+  .score{font-size:.95rem}
+  .settings{flex-wrap:nowrap; overflow-x:auto; margin:12px -12px 14px; padding:2px 12px 6px; scrollbar-width:none}
+  .settings::-webkit-scrollbar{display:none}
+  .chip{flex:none; font-size:.95rem; padding:5px 12px}
+  .reel{gap:8px}
+  .slot{padding:5px 5px 6px; gap:5px; border-radius:12px; border-width:2px}
+  .answer{font-size:1.1rem; min-height:1.8rem; line-height:1.8rem}
+  .dock{
+    position:fixed; left:0; right:0; bottom:0; z-index:10;
+    padding:6px 12px calc(12px + env(safe-area-inset-bottom,0px));
+    background:color-mix(in srgb,var(--paper) 92%,transparent);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    border-top:2px solid var(--line);
+  }
+  .result{margin:0; min-height:1.8rem; font-size:1.2rem}
+  .keys{gap:6px; margin:4px 0 10px}
+  .key{padding:12px 0; font-size:1.2rem; border-radius:12px}
+  .actions{flex-wrap:nowrap; gap:6px}
+  .btn{flex:1 1 0; min-width:0; font-size:1rem; padding:10px 6px; border-width:2px}
+}
+.slot.playing{border-color:var(--lemon-deep); box-shadow:0 0 0 5px color-mix(in srgb,var(--lemon) 60%,transparent); transform:translateY(-4px); transition:transform .12s}
+@media (prefers-reduced-motion: reduce){ .slot.playing{transform:none} }
+button:focus-visible{outline:3px solid var(--ink); outline-offset:3px}
+@media (prefers-reduced-motion: reduce){ .key:active{transform:none} }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Notenmachine</h1>
+    <div class="score" id="score">Nog niet gespeeld</div>
+  </header>
+
+  <div class="settings" role="group" aria-label="Instellingen">
+    <button class="chip" data-set="sol">Solsleutel si – fa</button>
+    <button class="chip" data-set="fa3">Fa-sleutel mi / fa / sol / la</button>
+    <button class="chip" data-set="fado">Fa-sleutel do – do</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="chip" data-count="4">4 noten</button>
+    <button class="chip" data-count="6">6 noten</button>
+  </div>
+
+  <div class="reel" id="reel"></div>
+
+  <div class="dock">
+    <div class="result" id="result" aria-live="polite"></div>
+    <div class="keys" id="keys"></div>
+    <div class="actions">
+      <button class="btn primary" id="spin">Ronddraaien</button>
+      <button class="btn" id="check" disabled>Controleer</button>
+      <button class="btn" id="reveal">Antwoorden</button>
+    </div>
+  </div>
+</main>
+
+<script>
+const VF = Vex.Flow;
+const NAMES = {c:'do', d:'re', e:'mi', f:'fa', g:'sol', a:'la', b:'si'};
+const ORDER = ['do','re','mi','fa','sol','la','si'];
+const SETS = {
+  sol:  {clef:'treble', keys:['b/3','c/4','d/4','e/4','f/4','g/4','a/4','b/4','c/5','d/5','e/5','f/5']},
+  fa3:  {clef:'bass',   keys:['e/3','f/3','g/3','a/3']},
+  fado: {clef:'bass',   keys:['c/3','d/3','e/3','f/3','g/3','a/3','b/3','c/4']}
+};
+
+function load(k,d){ try{ const v=localStorage.getItem(k); return v ?? d; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+let setId = SETS[load('nm-set','sol')] ? load('nm-set','sol') : 'sol';
+let count = [4,6].includes(+load('nm-count','6')) ? +load('nm-count','6') : 6;
+let notes = [], answers = [], active = 0, checked = false, spinning = false;
+let total = {right:0, all:0};
+
+const reel = document.getElementById('reel');
+const keysEl = document.getElementById('keys');
+const checkBtn = document.getElementById('check');
+const revealBtn = document.getElementById('reveal');
+const spinBtn = document.getElementById('spin');
+const resultEl = document.getElementById('result');
+const scoreEl = document.getElementById('score');
+
+ORDER.forEach(n=>{
+  const b=document.createElement('button'); b.className='key'; b.textContent=n;
+  b.addEventListener('click',()=>pick(n)); keysEl.appendChild(b);
+});
+
+function nameOf(key){ return NAMES[key[0]]; }
+function rand(arr, not){
+  let k; let tries=0;
+  do{ k=arr[Math.floor(Math.random()*arr.length)]; tries++; } while(k===not && arr.length>1 && tries<5);
+  return k;
+}
+
+function drawNote(el, key, clef){
+  el.innerHTML='';
+  const W=170, H=120;
+  const r=new VF.Renderer(el, VF.Renderer.Backends.SVG); r.resize(W,H);
+  const ctx=r.getContext();
+  const st=new VF.Stave(6,0,W-12); st.addClef(clef); st.setEndBarType(VF.BarlineType.SINGLE);
+  st.setContext(ctx).draw();
+  const n=new VF.StaveNote({keys:[key], duration:'w', clef});
+  VF.Formatter.FormatAndDraw(ctx, st, [n]);
+  const svg=el.querySelector('svg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height');
+  svg.setAttribute('role','img'); svg.setAttribute('aria-label','noot');
+}
+
+function build(){
+  reel.innerHTML=''; reel.style.setProperty('--n',count); reel.dataset.n=count;
+  for(let i=0;i<count;i++){
+    const s=document.createElement('button'); s.className='slot';
+    s.innerHTML='<div class="sheet"></div><div class="answer empty">?</div>';
+    s.addEventListener('click',()=>{ if(checked||spinning) return; active=i; paint(); });
+    reel.appendChild(s);
+  }
+}
+
+function paint(){
+  const slots=reel.children;
+  for(let i=0;i<count;i++){
+    const s=slots[i], a=s.querySelector('.answer');
+    s.classList.toggle('active', !checked && !spinning && i===active);
+    s.classList.remove('ok','bad');
+    const correct=nameOf(notes[i]);
+    if(checked){
+      if(answers[i]===correct){ s.classList.add('ok'); a.className='answer'; a.textContent=correct+' ✓'; }
+      else if(answers[i]===null){ s.classList.add('bad'); a.className='answer'; a.innerHTML=`<span class="fix">${correct}</span>`; }
+      else { s.classList.add('bad'); a.className='answer'; a.innerHTML=`<s>${answers[i]}</s><span class="fix">${correct}</span>`; }
+    } else {
+      a.className = answers[i] ? 'answer' : 'answer empty';
+      a.textContent = answers[i] || '?';
+    }
+  }
+  const filled=answers.filter(Boolean).length;
+  checkBtn.disabled = checked || spinning || filled===0;
+  revealBtn.disabled = checked || spinning;
+  keysEl.querySelectorAll('.key').forEach(k=>k.disabled=checked||spinning);
+  document.querySelectorAll('[data-set]').forEach(c=>c.setAttribute('aria-pressed', c.dataset.set===setId));
+  document.querySelectorAll('[data-count]').forEach(c=>c.setAttribute('aria-pressed', +c.dataset.count===count));
+}
+
+function pick(n){
+  if(checked||spinning) return;
+  answers[active]=n;
+  const next=answers.findIndex((a,i)=>i>active && !a);
+  const first=answers.findIndex(a=>!a);
+  active = next>=0 ? next : (first>=0 ? first : active);
+  paint();
+}
+
+function spin(){
+  if(spinning) return;
+  const set=SETS[setId];
+  const finals=[]; for(let i=0;i<count;i++) finals.push(rand(set.keys, finals[i-1]));
+  notes=finals.slice(); answers=Array(count).fill(null); active=0; checked=false; resultEl.textContent='';
+  const sheets=[...reel.querySelectorAll('.sheet')];
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ sheets.forEach((el,i)=>drawNote(el,finals[i],set.clef)); paint(); return; }
+  spinning=true; paint();
+  const start=performance.now(), stepMs=70;
+  const stopAt=sheets.map((_,i)=>380+i*140);
+  const done=sheets.map(()=>false);
+  let last=0;
+  function tick(t){
+    const el=t-start;
+    if(t-last>=stepMs){
+      last=t;
+      sheets.forEach((sh,i)=>{
+        if(done[i]) return;
+        if(el>=stopAt[i]){ drawNote(sh,finals[i],set.clef); done[i]=true; }
+        else drawNote(sh,rand(set.keys),set.clef);
+      });
+    }
+    if(done.every(Boolean)){ spinning=false; paint(); }
+    else requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function check(){
+  checked=true;
+  const right=notes.filter((k,i)=>answers[i]===nameOf(k)).length;
+  total.right+=right; total.all+=count;
+  resultEl.textContent = right===count ? `Alles juist! ${right} van ${count} 🍋` : `${right} van ${count} juist`;
+  scoreEl.innerHTML=`Totaal: <b>${total.right}</b> van <b>${total.all}</b>`;
+  paint();
+  playAll(notes.map((k,i)=>answers[i]===nameOf(k)));
+}
+
+let actx=null;
+function tone(freq, t0, dur){
+  const o1=actx.createOscillator(), o2=actx.createOscillator(), g=actx.createGain();
+  o1.type='triangle'; o2.type='sine'; o1.frequency.value=freq; o2.frequency.value=freq*2;
+  const g2=actx.createGain(); g2.gain.value=.25;
+  o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(actx.destination);
+  g.gain.setValueAtTime(0,t0);
+  g.gain.linearRampToValueAtTime(.35,t0+.02);
+  g.gain.exponentialRampToValueAtTime(.001,t0+dur);
+  o1.start(t0); o2.start(t0); o1.stop(t0+dur+.05); o2.stop(t0+dur+.05);
+}
+function prot(t0, dur){
+  const o=actx.createOscillator(), lfo=actx.createOscillator(), lfoGain=actx.createGain();
+  const am=actx.createGain(), f=actx.createBiquadFilter(), g=actx.createGain();
+  o.type='sawtooth';
+  o.frequency.setValueAtTime(95,t0);
+  o.frequency.exponentialRampToValueAtTime(55,t0+dur);
+  lfo.type='square'; lfo.frequency.setValueAtTime(28,t0); lfo.frequency.linearRampToValueAtTime(18,t0+dur);
+  lfoGain.gain.value=.5; am.gain.value=.5;
+  lfo.connect(lfoGain); lfoGain.connect(am.gain);
+  f.type='lowpass'; f.frequency.value=700; f.Q.value=6;
+  o.connect(am); am.connect(f); f.connect(g); g.connect(actx.destination);
+  g.gain.setValueAtTime(0,t0);
+  g.gain.linearRampToValueAtTime(.6,t0+.03);
+  g.gain.setValueAtTime(.6,t0+dur*.6);
+  g.gain.exponentialRampToValueAtTime(.001,t0+dur);
+  o.start(t0); lfo.start(t0); o.stop(t0+dur+.05); lfo.stop(t0+dur+.05);
+}
+function freqOf(key){
+  const [l,o]=key.split('/');
+  const midi=12*(+o+1)+{c:0,d:2,e:4,f:5,g:7,a:9,b:11}[l];
+  return 440*Math.pow(2,(midi-69)/12);
+}
+function playAll(ok){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended') actx.resume();
+  }catch(e){ return; }
+  const step=.55, start=actx.currentTime+.1, slots=reel.children, seq=notes.slice();
+  seq.forEach((k,i)=>{
+    if(ok[i]) tone(freqOf(k), start+i*step, .9);
+    else prot(start+i*step, .5);
+    setTimeout(()=>{ [...slots].forEach(s=>s.classList.remove('playing')); slots[i]?.classList.add('playing'); }, (i*step+.1)*1000);
+  });
+  setTimeout(()=>[...slots].forEach(s=>s.classList.remove('playing')), (seq.length*step+.3)*1000);
+}
+
+function reveal(){
+  checked=true; resultEl.textContent='Zo heten ze';
+  paint();
+}
+
+document.querySelectorAll('[data-set]').forEach(c=>c.addEventListener('click',()=>{
+  if(spinning) return; setId=c.dataset.set; save('nm-set',setId); spin();
+}));
+document.querySelectorAll('[data-count]').forEach(c=>c.addEventListener('click',()=>{
+  if(spinning) return; count=+c.dataset.count; save('nm-count',count); build(); spin();
+}));
+spinBtn.addEventListener('click',spin);
+checkBtn.addEventListener('click',check);
+revealBtn.addEventListener('click',reveal);
+
+document.addEventListener('keydown',e=>{
+  const map={d:'do',r:'re',m:'mi',f:'fa',s:'sol',l:'la'};
+  if(e.key==='Enter'){ if(checked) spin(); else if(!checkBtn.disabled) check(); return; }
+  if(e.key===' ' && e.target===document.body){ e.preventDefault(); spin(); return; }
+  if(map[e.key]) pick(map[e.key]);
+});
+
+build(); spin();
+</script>
+</body>
+</html>
