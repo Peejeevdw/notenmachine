@@ -65,7 +65,7 @@
       actx = actx || new (window.AudioContext||window.webkitAudioContext)();
       if(actx.state === 'suspended') actx.resume();
       const t = actx.currentTime + .05;
-      sb.dataset.snd === '1' ? tone(freqOf('c/5'), t, .9) : prot(t, .5);
+      sb.dataset.snd === '1' ? piano(freqOf('c/5'), t, 1.6) : prot(t, .5);
     }
   });
 

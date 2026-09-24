@@ -34,7 +34,10 @@ h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
 .score{display:flex; align-items:baseline; gap:4px; padding:8px 14px; border-radius:999px; background:var(--card); box-shadow:0 2px 0 var(--line); font-weight:700; font-size:1.15rem; white-space:nowrap}
 .score span{font-size:.85rem; font-weight:500; color:var(--sub)}
 
-.picker{display:grid; grid-template-columns:1.15fr .85fr 1fr; gap:6px; margin:16px 0 10px}
+.mode{display:flex; gap:3px; margin:14px 0 0; padding:3px; border:2px solid var(--line); border-radius:14px; background:var(--card)}
+.mode button{flex:1; height:38px; border:0; border-radius:10px; background:transparent; font-weight:600; font-size:1rem; color:var(--sub)}
+.mode button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.picker{display:grid; grid-template-columns:1.15fr .85fr 1fr; gap:6px; margin:8px 0 10px}
 /* Select blijft onzichtbaar bovenop liggen (native keuzelijst); de span toont de korte tekst. */
 .sel{position:relative; display:flex; align-items:center; min-width:0; height:44px; padding:0 26px 0 12px;
   border:2px solid var(--line); border-radius:14px; background:var(--card); font-size:1rem; font-weight:600; color:var(--ink);
@@ -59,7 +62,22 @@ h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
 }
 .slot.active{border-color:var(--ink)}
 .slot.bad{border-color:var(--c)}
+.face{position:relative; aspect-ratio:170/120}
 .sheet{background:#fff; border-radius:12px; overflow:hidden}
+/* Luisteren: luidspreker i.p.v. notenbalk tot na Controleer. */
+.ear{display:none; position:absolute; inset:0; align-items:center; justify-content:center; border-radius:12px;
+  background:color-mix(in srgb,var(--ink) 7%,transparent); color:var(--sub)}
+.ear svg{width:44%; height:auto}
+.listen .slot:not(.shown) .ear{display:flex}
+.listen .slot:not(.shown) .sheet{visibility:hidden}
+.listen .slot.active .ear{color:var(--ink)}
+.listen .slot.await .ear{animation:await 1.4s ease-in-out infinite}
+@keyframes await{50%{color:var(--accent); transform:scale(1.04)}}
+.hint{display:flex; align-items:center; gap:8px; margin:0 0 12px; padding:4px 4px 4px 12px; border-radius:12px;
+  background:color-mix(in srgb,var(--accent) 14%,transparent); font-size:.9rem}
+.hint[hidden]{display:none}
+.hint p{margin:0; flex:1}
+.hint button{flex:none; width:44px; height:44px; border:0; border-radius:10px; background:transparent; font-size:1.3rem; color:var(--sub)}
 .sheet svg{display:block; width:100%; height:auto}
 .answer{display:flex; align-items:center; justify-content:center; gap:6px; height:38px; border-radius:12px; font-size:1.2rem; font-weight:700}
 .answer.empty{background:color-mix(in srgb,var(--ink) 7%,transparent); color:var(--sub); font-weight:500}
@@ -95,7 +113,7 @@ h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
 .btn.ghost{border-color:transparent; background:transparent; font-size:1rem; color:var(--sub); padding:0 6px}
 .btn:disabled{opacity:.4; cursor:default}
 @media (max-width:380px){ .key{font-size:1rem} .btn{font-size:1rem} .btn.ghost{font-size:.9rem} }
-@media (prefers-reduced-motion: reduce){ .slot{transition:none} .slot.playing{transform:none} .key:active{transform:none} }
+@media (prefers-reduced-motion: reduce){ .slot{transition:none} .slot.playing{transform:none} .key:active{transform:none} .listen .slot.await .ear{animation:none; color:var(--accent)} }
 </style>
 </head>
 <body>
@@ -107,6 +125,11 @@ h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
     </div>
     <div class="score" id="score" aria-label="Totaalscore">–</div>
   </header>
+
+  <div class="mode" role="group" aria-label="Modus">
+    <button type="button" data-mode="lezen">Lezen</button>
+    <button type="button" data-mode="luister">Luisteren</button>
+  </div>
 
   <div class="picker">
     <label class="sel"><span></span>
@@ -127,6 +150,10 @@ h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
     </label>
   </div>
   <div class="notelist" id="noteList" aria-label="Noten in deze stap"></div>
+  <div class="hint" id="hint" role="note" hidden>
+    <p>Hoor je niets? Zet je iPhone uit de stille modus.</p>
+    <button type="button" id="hintClose" aria-label="Sluiten">×</button>
+  </div>
 
   <div class="reel" id="reel"></div>
 </main>
@@ -182,6 +209,7 @@ let year = qs.get('jaar') || load('nm-year','1'); if(!PLAN[year]) year='1';
 let clefId = qs.get('sleutel') || load('nm-clef','sol'); if(!CLEF[clefId]) clefId='sol';
 let stepIdx = (+(qs.get('stap') || load('nm-step','1')))-1;
 const count = 6;
+let mode = qs.get('modus') || load('nm-mode','lezen'); if(!['lezen','luister'].includes(mode)) mode='lezen';
 let notes = [], answers = [], active = 0, checked = false, spinning = false;
 let total = {right:0, all:0};
 
@@ -223,12 +251,17 @@ function drawNote(el, key, clef){
   svg.querySelectorAll('[stroke="black"]').forEach(n=>n.setAttribute('stroke','#1B1A2E'));
 }
 
+const SPEAKER='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
 function build(){
   reel.innerHTML=''; reel.style.setProperty('--n',count); reel.dataset.n=count;
   for(let i=0;i<count;i++){
     const s=document.createElement('button'); s.className='slot';
-    s.innerHTML='<div class="sheet"></div><div class="answer empty">?</div>';
-    s.addEventListener('click',()=>{ if(checked||spinning) return; active=i; paint(); });
+    s.innerHTML='<div class="face"><div class="sheet"></div><div class="ear" aria-hidden="true">'+SPEAKER+'</div></div><div class="answer empty">?</div>';
+    s.addEventListener('click',()=>{
+      if(spinning) return;
+      if(mode==='luister'){ if(!checked){ active=i; paint(); } playCard(i); return; }
+      if(checked) return; active=i; paint();
+    });
     reel.appendChild(s);
   }
 }
@@ -238,6 +271,8 @@ function paint(){
   for(let i=0;i<count;i++){
     const s=slots[i], a=s.querySelector('.answer');
     s.classList.toggle('active', !checked && !spinning && i===active);
+    s.classList.toggle('shown', checked);
+    if(mode==='luister' && !checked) s.setAttribute('aria-label',`Kaartje ${i+1}: noot beluisteren`); else s.removeAttribute('aria-label');
     s.classList.remove('ok','bad');
     const correct=nameOf(notes[i]);
     s.classList.remove(...ORDER.map(n=>'n-'+n));
@@ -262,16 +297,26 @@ function pick(n){
   answers[active]=n;
   const next=answers.findIndex((a,i)=>i>active && !a);
   const first=answers.findIndex(a=>!a);
+  const was=active;
   active = next>=0 ? next : (first>=0 ? first : active);
   paint();
+  if(mode==='luister' && active!==was) playCard(active);
 }
 
-function spin(){
+// user=false bij het laden: dan mag er (iOS) nog geen geluid starten.
+function spin(user=true){
   if(spinning) return;
+  hush();
   const set=currentSet();
   const finals=[]; for(let i=0;i<count;i++) finals.push(rand(set.keys, finals[i-1]));
   notes=finals.slice(); answers=Array(count).fill(null); active=0; checked=false; resultEl.textContent=''; resultEl.className='result';
   const sheets=[...reel.querySelectorAll('.sheet')];
+  if(mode==='luister'){
+    sheets.forEach(el=>el.innerHTML='');
+    paint();
+    if(user) playCard(0); else reel.children[0].classList.add('await');
+    return;
+  }
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduce){ sheets.forEach((el,i)=>drawNote(el,finals[i],set.clef)); paint(); return; }
   spinning=true; paint();
@@ -295,8 +340,13 @@ function spin(){
   requestAnimationFrame(tick);
 }
 
+function showSheets(){
+  if(mode!=='luister') return;
+  const set=currentSet();
+  [...reel.querySelectorAll('.sheet')].forEach((el,i)=>drawNote(el,notes[i],set.clef));
+}
 function check(){
-  checked=true;
+  checked=true; hush(); showSheets();
   const right=notes.filter((k,i)=>answers[i]===nameOf(k)).length;
   total.right+=right; total.all+=count;
   resultEl.textContent = right===count ? `Alles juist! ${right} van ${count}` : (right>=count-1 ? `Bijna! ${right} van ${count} juist` : `${right} van ${count} juist`);
@@ -306,21 +356,61 @@ function check(){
   playAll(notes.map((k,i)=>answers[i]===nameOf(k)));
 }
 
-let actx=null;
-function tone(freq, t0, dur){
-  const o1=actx.createOscillator(), o2=actx.createOscillator(), g=actx.createGain();
-  o1.type='triangle'; o2.type='sine'; o1.frequency.value=freq; o2.frequency.value=freq*2;
-  const g2=actx.createGain(); g2.gain.value=.25;
-  o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(actx.destination);
+let actx=null, bus=null, timers=[];
+// Alleen aanroepen vanuit een tik van de gebruiker (iOS).
+function ensureAudio(){
+  try{
+    if(!actx){
+      try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
+      actx=new (window.AudioContext||window.webkitAudioContext)();
+    }
+    if(actx.state==='suspended') actx.resume();
+    return true;
+  }catch(e){ return false; }
+}
+// Alle geluid loopt via één bus, zodat hush() een lopende reeks kan stoppen.
+function out(){ if(!bus){ bus=actx.createGain(); bus.connect(actx.destination); } return bus; }
+function hush(){
+  timers.forEach(clearTimeout); timers=[];
+  [...reel.children].forEach(s=>s.classList.remove('playing'));
+  if(bus){ const b=bus; bus=null; b.gain.setTargetAtTime(0,actx.currentTime,.015); setTimeout(()=>b.disconnect(),300); }
+}
+function later(fn,ms){ timers.push(setTimeout(fn,ms)); }
+// Pianoachtige klank: boventonen met lichte inharmoniciteit, snelle attack,
+// hoge boventonen doven sneller uit en het filter gaat mee dicht.
+function piano(freq, t0, dur=1.6, vol=.2){
+  const lp=actx.createBiquadFilter(), g=actx.createGain();
+  lp.type='lowpass';
+  lp.frequency.setValueAtTime(Math.min(freq*10,14000),t0);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(freq*2,500),t0+dur);
+  lp.connect(g); g.connect(out());
   g.gain.setValueAtTime(0,t0);
-  g.gain.linearRampToValueAtTime(.35,t0+.02);
-  g.gain.exponentialRampToValueAtTime(.001,t0+dur);
-  o1.start(t0); o2.start(t0); o1.stop(t0+dur+.05); o2.stop(t0+dur+.05);
+  g.gain.linearRampToValueAtTime(vol,t0+.005);
+  g.gain.exponentialRampToValueAtTime(vol*.4,t0+.3);
+  g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+  [[1,1],[2,.55],[3,.3],[4,.18],[5,.1],[6,.06]].forEach(([h,a])=>{
+    const f=freq*h*Math.sqrt(1+.0004*h*h);
+    if(f>16000) return;
+    const o=actx.createOscillator(), og=actx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    og.gain.setValueAtTime(a,t0);
+    og.gain.exponentialRampToValueAtTime(a*.002,t0+dur/(1+h*.4));
+    o.connect(og); og.connect(lp); o.start(t0); o.stop(t0+dur+.05);
+  });
+}
+// Luisteren: speel één kaartje, nooit een reeks.
+function playCard(i){
+  if(!notes[i] || !ensureAudio()) return;
+  hush(); showHint();
+  reel.querySelectorAll('.await').forEach(s=>s.classList.remove('await'));
+  piano(freqOf(notes[i]), actx.currentTime+.03);
+  const s=reel.children[i]; s.classList.add('playing');
+  later(()=>s.classList.remove('playing'), 450);
 }
 // Fout: twee zachte, gedempte tikjes die een halve toon zakken ("uh-oh").
 function prot(t0, dur){
   const f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900; f.Q.value=.7;
-  f.connect(actx.destination);
+  f.connect(out());
   [[330,0],[311,.16]].forEach(([freq,off])=>{
     const t=t0+off, d=Math.min(.28,dur-off);
     const o=actx.createOscillator(), g=actx.createGain();
@@ -340,21 +430,28 @@ function freqOf(key){
   return 440*Math.pow(2,(midi-69)/12);
 }
 function playAll(ok){
-  try{
-    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
-    if(actx.state==='suspended') actx.resume();
-  }catch(e){ return; }
+  if(!ensureAudio()) return;
   const step=.55, start=actx.currentTime+.1, slots=reel.children, seq=notes.slice();
   seq.forEach((k,i)=>{
-    if(ok[i]) tone(freqOf(k), start+i*step, .9);
-    else prot(start+i*step, .5);
-    setTimeout(()=>{ [...slots].forEach(s=>s.classList.remove('playing')); slots[i]?.classList.add('playing'); }, (i*step+.1)*1000);
+    // Lezen: altijd de juiste noot. Luisteren: foutgeluid bij een fout antwoord.
+    if(mode==='luister' && !ok[i]) prot(start+i*step, .5);
+    else piano(freqOf(k), start+i*step, 1.2);
+    later(()=>{ [...slots].forEach(s=>s.classList.remove('playing')); slots[i]?.classList.add('playing'); }, (i*step+.1)*1000);
   });
-  setTimeout(()=>[...slots].forEach(s=>s.classList.remove('playing')), (seq.length*step+.3)*1000);
+  later(()=>[...slots].forEach(s=>s.classList.remove('playing')), (seq.length*step+.3)*1000);
 }
 
+// iOS: één keer tonen dat de stille modus het geluid kan blokkeren.
+const hintEl=document.getElementById('hint');
+const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+function showHint(){
+  if(!isIOS || load('nm-silent-hint','')) return;
+  save('nm-silent-hint','1'); hintEl.hidden=false;
+}
+document.getElementById('hintClose').addEventListener('click',()=>{ hintEl.hidden=true; });
+
 function reveal(){
-  checked=true; resultEl.textContent='Zo heten ze'; resultEl.className='result show';
+  checked=true; hush(); showSheets(); resultEl.textContent='Zo heten ze'; resultEl.className='result show';
   paint();
 }
 
@@ -393,12 +490,19 @@ function syncPicker(){
   [selYear,selClef,selStep].forEach(sel=>sel.previousElementSibling.textContent=sel.selectedOptions[0].dataset.short);
   document.getElementById('eyebrow').textContent=selYear.selectedOptions[0].textContent+' · '+selClef.selectedOptions[0].textContent.toLowerCase();
   save('nm-year',year); save('nm-clef',clefId); save('nm-step',stepIdx+1);
-  try{ history.replaceState(null,'',`?jaar=${year}&sleutel=${clefId}&stap=${stepIdx+1}`); }catch(e){}
+  document.body.classList.toggle('listen', mode==='luister');
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.mode===mode));
+  save('nm-mode',mode);
+  try{ history.replaceState(null,'',`?jaar=${year}&sleutel=${clefId}&stap=${stepIdx+1}${mode==='luister'?'&modus=luister':''}`); }catch(e){}
 }
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
+  if(spinning || b.dataset.mode===mode) return;
+  mode=b.dataset.mode; if(mode==='lezen') hintEl.hidden=true; syncPicker(); spin();
+}));
 selYear.addEventListener('change',()=>{ if(spinning){selYear.value=year;return;} year=selYear.value; stepIdx=PLAN[year][clefId].length-1; syncPicker(); spin(); });
 selClef.addEventListener('change',()=>{ if(spinning){selClef.value=clefId;return;} clefId=selClef.value; stepIdx=PLAN[year][clefId].length-1; syncPicker(); spin(); });
 selStep.addEventListener('change',()=>{ if(spinning){selStep.value=stepIdx;return;} stepIdx=+selStep.value; syncPicker(); spin(); });
-spinBtn.addEventListener('click',spin);
+spinBtn.addEventListener('click',()=>spin());
 checkBtn.addEventListener('click',check);
 revealBtn.addEventListener('click',reveal);
 
@@ -409,7 +513,7 @@ document.addEventListener('keydown',e=>{
   if(map[e.key]) pick(map[e.key]);
 });
 
-syncPicker(); build(); spin();
+syncPicker(); build(); spin(false);
 </script>
 <script>
 if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
