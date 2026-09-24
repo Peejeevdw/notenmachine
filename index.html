@@ -302,14 +302,11 @@ function pick(n){
   answers[active]=n;
   const next=answers.findIndex((a,i)=>i>active && !a);
   const first=answers.findIndex(a=>!a);
-  const was=active;
   active = next>=0 ? next : (first>=0 ? first : active);
   paint();
-  if(mode==='luister' && active!==was) playCard(active);
 }
 
-// user=false bij het laden: dan mag er (iOS) nog geen geluid starten.
-function spin(user=true){
+function spin(){
   if(spinning) return;
   hush();
   const set=currentSet();
@@ -319,7 +316,7 @@ function spin(user=true){
   if(mode==='luister'){
     sheets.forEach(el=>el.innerHTML='');
     paint();
-    if(user) playCard(0); else reel.children[0].classList.add('await');
+    reel.children[0].classList.add('await');
     return;
   }
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -403,7 +400,7 @@ function piano(freq, t0, dur=1.6, vol=.2){
     o.connect(og); og.connect(lp); o.start(t0); o.stop(t0+dur+.05);
   });
 }
-// Luisteren: speel één kaartje, nooit een reeks.
+// Luisteren: speel één kaartje, alleen als het kind erop tikt.
 function playCard(i){
   if(!notes[i] || !ensureAudio()) return;
   hush(); showHint();
@@ -507,7 +504,7 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',(
 selYear.addEventListener('change',()=>{ if(spinning){selYear.value=year;return;} year=selYear.value; stepIdx=PLAN[year][clefId].length-1; syncPicker(); spin(); });
 selClef.addEventListener('change',()=>{ if(spinning){selClef.value=clefId;return;} clefId=selClef.value; stepIdx=PLAN[year][clefId].length-1; syncPicker(); spin(); });
 selStep.addEventListener('change',()=>{ if(spinning){selStep.value=stepIdx;return;} stepIdx=+selStep.value; syncPicker(); spin(); });
-spinBtn.addEventListener('click',()=>spin());
+spinBtn.addEventListener('click',spin);
 checkBtn.addEventListener('click',check);
 revealBtn.addEventListener('click',reveal);
 
@@ -518,7 +515,7 @@ document.addEventListener('keydown',e=>{
   if(map[e.key]) pick(map[e.key]);
 });
 
-syncPicker(); build(); spin(false);
+syncPicker(); build(); spin();
 </script>
 <script>
 if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
