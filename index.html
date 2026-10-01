@@ -501,8 +501,8 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',(
   if(spinning || b.dataset.mode===mode) return;
   mode=b.dataset.mode; if(mode==='lezen') hintEl.hidden=true; syncPicker(); spin();
 }));
-selYear.addEventListener('change',()=>{ if(spinning){selYear.value=year;return;} year=selYear.value; stepIdx=PLAN[year][clefId].length-1; syncPicker(); spin(); });
-selClef.addEventListener('change',()=>{ if(spinning){selClef.value=clefId;return;} clefId=selClef.value; stepIdx=PLAN[year][clefId].length-1; syncPicker(); spin(); });
+selYear.addEventListener('change',()=>{ if(spinning){selYear.value=year;return;} year=selYear.value; stepIdx=0; syncPicker(); spin(); });
+selClef.addEventListener('change',()=>{ if(spinning){selClef.value=clefId;return;} clefId=selClef.value; stepIdx=0; syncPicker(); spin(); });
 selStep.addEventListener('change',()=>{ if(spinning){selStep.value=stepIdx;return;} stepIdx=+selStep.value; syncPicker(); spin(); });
 spinBtn.addEventListener('click',spin);
 checkBtn.addEventListener('click',check);
