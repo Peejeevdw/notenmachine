@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nummer 20 · Meelezen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+:root{
+  --bg:#F5F3FF; --card:#FFFFFF; --ink:#1B1A2E; --sub:#5B5873; --line:#E6E3F2;
+  --accent:#3E63DD;
+  --do:#E5484D; --re:#EF6A1A; --mi:#F5B800; --fa:#3E9B4F; --sol:#0E9384; --la:#3E63DD; --si:#8E4EC6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#15142A; --card:#211F3A; --ink:#F2F1FA; --sub:#A9A6C4; --line:#34325A; }
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:"Baloo 2", ui-rounded, "Nunito", system-ui, sans-serif}
+button{font:inherit; color:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+
+main{max-width:760px; margin:0 auto; padding:20px 16px calc(230px + env(safe-area-inset-bottom,0px))}
+header{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:12px}
+.eyebrow{font-size:.8rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--sub)}
+h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
+.toggle{flex:none; height:40px; padding:0 14px; border:2px solid var(--line); border-radius:999px; background:var(--card); font-weight:600; font-size:.95rem; color:var(--sub)}
+.toggle[aria-pressed="true"]{border-color:var(--ink); color:var(--ink)}
+.tip{margin:0 2px 12px; font-size:.95rem; color:var(--sub)}
+
+/* Partituur: wit blad, ook in donkere modus, zoals de kaartjes in de Notenmachine. */
+.score{display:flex; flex-direction:column; gap:2px; padding:8px 6px; background:#fff; border-radius:18px; box-shadow:0 3px 0 var(--line)}
+.row{scroll-margin:90px 0 240px}
+.row svg{display:block; width:100%; height:auto}
+.hit{fill:transparent; stroke:none; cursor:pointer}
+.mark{fill:#1B1A2E; font:italic 600 13px "Baloo 2", ui-rounded, system-ui, sans-serif}
+.vf-stavenote.now *{fill:var(--c); stroke:var(--c)}
+.lab rect{fill:transparent; stroke:none}
+.lab text{stroke:none}
+.lab text{fill:var(--t); font:700 13px "Baloo 2", ui-rounded, system-ui, sans-serif; text-anchor:middle}
+.lab.now rect{fill:var(--c)}
+.lab.now text{fill:#fff}
+.lab.now.n-mi text{fill:#2A1F00}
+.nonames .lab{visibility:hidden}
+.n-do{--c:var(--do); --t:var(--do)} .n-re{--c:var(--re); --t:var(--re)} .n-mi{--c:var(--mi); --t:#9A7300}
+.n-fa{--c:var(--fa); --t:var(--fa)} .n-sol{--c:var(--sol); --t:var(--sol)} .n-la{--c:var(--la); --t:var(--la)} .n-si{--c:var(--si); --t:var(--si)}
+
+.dock{
+  position:fixed; left:0; right:0; bottom:0; z-index:10;
+  padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));
+  background:color-mix(in srgb,var(--bg) 90%,transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+}
+.dock-in{max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:10px}
+.status{display:flex; align-items:center; justify-content:center; min-height:44px; padding:6px 14px; border-radius:16px; background:var(--card); box-shadow:0 2px 0 var(--line); font-size:1.1rem; font-weight:700; text-align:center}
+.status.count{background:var(--accent); color:#fff; font-size:1.4rem}
+.speed{display:flex; align-items:center; gap:8px}
+.speed .lbl{flex:none; font-size:.8rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--sub)}
+.seg{flex:1; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; padding:3px; border:2px solid var(--line); border-radius:14px; background:var(--card)}
+.seg button{height:38px; border:0; border-radius:10px; background:transparent; font-weight:600; font-size:.95rem; color:var(--sub); padding:0}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.actions{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:8px}
+.btn{display:flex; align-items:center; justify-content:center; gap:8px; height:56px; border-radius:18px; border:2px solid var(--ink); background:var(--card); color:var(--ink); font-size:1.15rem; font-weight:700; padding:0 14px}
+.btn.primary{background:var(--ink); color:var(--bg)}
+.btn svg{width:24px; height:24px; flex:none}
+.btn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+@media (max-width:419px){ .btn .txt{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap} .btn{min-width:56px; padding:0 10px} }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Zanglesjes · Allegro giocoso</div>
+      <h1>Nummer 20</h1>
+    </div>
+    <button type="button" class="toggle" id="names" aria-pressed="true">Verberg namen</button>
+  </header>
+  <p class="tip">Tik op een noot om vanaf daar te beginnen.</p>
+  <div class="score" id="score"></div>
+</main>
+
+<audio id="audio" src="muziek/nummer20.mp3" preload="auto"></audio>
+
+<div class="dock">
+  <div class="dock-in">
+    <div class="status" id="status" aria-live="polite">Klaar om te beginnen</div>
+    <div class="speed">
+      <span class="lbl">Tempo</span>
+      <div class="seg" id="speed" role="group" aria-label="Tempo"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="restart" aria-label="Opnieuw vanaf het begin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5v14"/><path d="M19 5 9 12l10 7V5z"/></svg></button>
+      <button class="btn primary" id="play"></button>
+      <button class="btn" id="loop" aria-pressed="false" title="Deze regel herhalen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg><span class="txt">Herhaal regel</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const VF = Vex.Flow;
+const NAMES = {c:'do', d:'re', e:'mi', f:'fa', g:'sol', a:'la', b:'si'};
+
+// Overgenomen uit het boek (2/4). Per maat: toonhoogte/duur, r = rust, qd = gepunte kwart.
+const A = ['c4/qd g4/8','c4/qd g4/8','c4/8 d4/8 e4/8 f4/8','g4/q r/q','a4/8 b4/8 c5/8 a4/8','g4/8 e4/8 d4/8 c4/8','d4/q g4/q','g4/h'];
+const B = ['c4/qd g4/8','c4/qd g4/8','c4/8 d4/8 e4/8 f4/8','g4/q r/q','a4/8 b4/8 c5/8 a4/8','g4/8 e4/8 d4/8 c4/8','d4/8 c4/8 b3/8 d4/8','c4/q r/q'];
+const C = ['d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','a4/8 b4/8 c5/8 b4/8','a4/8 g4/8 a4/q','d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','c5/8 d5/8 c5/8 b4/8','a4/q b4/q'];
+const D = ['d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','a4/8 b4/8 c5/8 b4/8','a4/8 g4/8 a4/q','a4/8 b4/8 c5/q','a4/8 g4/8 g4/8 b4/8','g4/q! g4/q!','g4/q! g4/q!'];
+const E = ['d4/8 c4/8 b3/8 d4/8','c4/q r/q','d5/8 c5/8 b4/8 d5/8','c5/q r/q'];
+const MEASURES = [...A, ...B, ...C, ...D, ...A, ...B, ...E];
+const TEXT = {0:'Allegro giocoso', 30:'rall.', 32:'a tempo'};
+
+// Tijdstip (s) van elke tel in de opname, gemeten op de begeleiding. Tel 0 = eerste noot.
+const BEATS = [21.35,22.07,22.78,23.50,24.21,24.94,25.65,26.37,27.09,27.79,28.51,29.23,29.94,30.66,31.38,32.11,32.82,33.53,34.24,34.96,35.68,36.40,37.12,37.84,38.56,39.26,39.97,40.70,41.41,42.13,42.85,43.57,44.28,45.00,45.71,46.43,47.15,47.88,48.59,49.31,50.03,50.74,51.46,52.16,52.88,53.60,54.32,55.04,55.76,56.47,57.18,57.90,58.62,59.34,60.06,60.78,61.49,62.21,62.91,63.65,64.35,65.07,65.79,66.51,67.23,67.94,68.65,69.37,70.09,70.81,71.52,72.24,72.97,73.68,74.39,75.09,75.82,76.53,77.26,77.98,78.69,79.40,80.12,80.84,81.56,82.28,83.00,83.72,84.43,85.15,85.86,86.56,87.28,88.02,88.74,89.45,90.17,90.88,91.59,92.29,93.03,93.75,94.47,95.19,95.91];
+const BEAT = 0.715, LEAD = 2; // instap: één maat vóór de gekozen noot
+const LEN = {q:1, qd:1.5, '8':.5, h:2};
+
+// Alle noten met hun begin (in tellen), maat en of het een rust is.
+const NOTES = [];
+{ let b=0;
+  MEASURES.forEach((m,mi)=>m.split(' ').forEach(tok=>{
+    const acc=tok.endsWith('!'); if(acc) tok=tok.slice(0,-1);
+    const [p,d]=tok.split('/');
+    NOTES.push({p, d, acc, rest:p==='r', beat:b, len:LEN[d], measure:mi});
+    b+=LEN[d];
+  }));
+}
+
+function timeOf(b){
+  if(b<=0) return BEATS[0]+b*BEAT;
+  const i=Math.min(Math.floor(b), BEATS.length-2);
+  return BEATS[i]+(b-i)*(BEATS[i+1]-BEATS[i]);
+}
+function beatOf(t){
+  if(t<BEATS[0]) return (t-BEATS[0])/BEAT;
+  let i=0; while(i<BEATS.length-2 && BEATS[i+1]<=t) i++;
+  return i+(t-BEATS[i])/(BEATS[i+1]-BEATS[i]);
+}
+function noteAt(b){
+  if(b<0) return -1;
+  for(let i=NOTES.length-1;i>=0;i--) if(NOTES[i].beat<=b) return i;
+  return -1;
+}
+
+function load(k,d){ try{ return localStorage.getItem(k) ?? d; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+const scoreEl=document.getElementById('score');
+const audio=document.getElementById('audio');
+const statusEl=document.getElementById('status');
+const playBtn=document.getElementById('play');
+const loopBtn=document.getElementById('loop');
+let rows=[];        // per regel: {el, first, last} (noot-indexen)
+let groups=[];      // per noot: {head, lab, row}
+let current=-1, currentRow=-1, loopRow=-1;
+
+function render(){
+  const avail=scoreEl.clientWidth-12;
+  // Iets groter tekenen dan VexFlow standaard; op smalle schermen 2 maten per regel.
+  const zoom=avail<500 ? 1.25 : 1.15;
+  const W=Math.floor(avail/zoom), H=150;
+  const perRow=W>=470 ? 4 : 2;
+  scoreEl.innerHTML=''; rows=[]; groups=[];
+  for(let start=0; start<MEASURES.length; start+=perRow){
+    const div=document.createElement('div'); div.className='row'; scoreEl.appendChild(div);
+    const r=new VF.Renderer(div, VF.Renderer.Backends.SVG); r.resize(W,H);
+    const ctx=r.getContext();
+    const ms=MEASURES.slice(start,start+perRow);
+    const extra=start===0 ? 62 : 40;
+    const mw=(W-6-extra)/perRow;
+    let x=2; const rowNotes=[], marks=[];
+    ms.forEach((_,k)=>{
+      const mi=start+k, first=k===0;
+      const st=new VF.Stave(x, 6, mw+(first?extra:0));
+      if(first) st.addClef('treble');
+      if(mi===0) st.addTimeSignature('2/4');
+      if(mi===MEASURES.length-1) st.setEndBarType(VF.BarlineType.END);
+      st.setContext(ctx).draw();
+      const own=NOTES.map((n,i)=>({n,i})).filter(o=>o.n.measure===mi);
+      const vfn=own.map(({n})=>{
+        const s=new VF.StaveNote({keys:[n.rest?'b/4':n.p[0]+'/'+n.p[1]], duration:n.d.replace('d','')+(n.rest?'r':''), dots:n.d.endsWith('d')?1:0, auto_stem:true});
+        if(n.d.endsWith('d')) VF.Dot.buildAndAttach([s],{all:true});
+        if(n.acc) s.addModifier(new VF.Articulation('a>').setPosition(VF.Modifier.Position.ABOVE),0);
+        return s;
+      });
+      const voice=new VF.Voice({num_beats:2, beat_value:4}).addTickables(vfn);
+      // Achtsten die naast elkaar staan samen balken, zoals in het boek.
+      const beams=[]; let run=[];
+      own.forEach(({n},k)=>{ if(n.d==='8' && !n.rest) run.push(vfn[k]); else { if(run.length>1) beams.push(new VF.Beam(run)); run=[]; } });
+      if(run.length>1) beams.push(new VF.Beam(run));
+      new VF.Formatter().joinVoices([voice]).format([voice], st.getNoteEndX()-st.getNoteStartX()-12);
+      voice.draw(ctx,st); beams.forEach(b=>b.setContext(ctx).draw());
+      own.forEach((o,k)=>rowNotes.push({i:o.i, vf:vfn[k], stave:st}));
+      if(TEXT[mi]) marks.push({text:TEXT[mi], x:st.getNoteStartX()+2, y:st.getYForLine(0)-(own.some(o=>o.n.acc)?30:16)});
+      x+=mw+(first?extra:0);
+    });
+    const svg=div.querySelector('svg');
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width=''; svg.style.height='';
+    svg.querySelectorAll('[fill="black"]').forEach(n=>n.setAttribute('fill','#1B1A2E'));
+    svg.querySelectorAll('[stroke="black"]').forEach(n=>n.setAttribute('stroke','#1B1A2E'));
+    const heads=[...svg.querySelectorAll('.vf-stavenote')];
+    const NS='http://www.w3.org/2000/svg';
+    const labY=rowNotes[0].stave.getYForLine(4)+46;
+    const ri=rows.length;
+    marks.forEach(m=>{ const t=document.createElementNS(NS,'text'); t.setAttribute('class','mark'); t.setAttribute('x',m.x); t.setAttribute('y',m.y); t.textContent=m.text; svg.appendChild(t); });
+    rowNotes.forEach((o,k)=>{
+      const n=NOTES[o.i], cx=(o.vf.getNoteHeadBeginX()+o.vf.getNoteHeadEndX())/2;
+      const g={head:heads[k], lab:null, row:ri};
+      if(!n.rest){
+        const name=NAMES[n.p[0]];
+        const lab=document.createElementNS(NS,'g'); lab.setAttribute('class','lab n-'+name);
+        const w=name.length>2?30:24;
+        lab.innerHTML=`<rect x="${cx-w/2}" y="${labY-14}" width="${w}" height="19" rx="9.5"/><text x="${cx}" y="${labY}">${name}</text>`;
+        svg.appendChild(lab); g.lab=lab;
+        heads[k].classList.add('n-'+name);
+      }
+      groups[o.i]=g;
+      // Ruim tikvlak over de hele hoogte van de regel.
+      const prev=rowNotes[k-1], next=rowNotes[k+1];
+      const left=prev ? (cx+(prev.vf.getNoteHeadBeginX()+prev.vf.getNoteHeadEndX())/2)/2 : cx-16;
+      const right=next ? (cx+(next.vf.getNoteHeadBeginX()+next.vf.getNoteHeadEndX())/2)/2 : cx+16;
+      const hit=document.createElementNS(NS,'rect');
+      hit.setAttribute('class','hit'); hit.setAttribute('x',left); hit.setAttribute('y',0);
+      hit.setAttribute('width',Math.max(8,right-left)); hit.setAttribute('height',H); hit.dataset.i=o.i;
+      svg.appendChild(hit);
+    });
+    rows.push({el:div, first:rowNotes[0].i, last:rowNotes[rowNotes.length-1].i});
+  }
+  const c=current; current=-1; mark(c, false);
+}
+
+function mark(i, follow){
+  if(i===current) return;
+  if(current>=0){ const g=groups[current]; g.head?.classList.remove('now'); g.lab?.classList.remove('now'); }
+  current=i;
+  if(i<0) return;
+  const g=groups[i]; g.head?.classList.add('now'); g.lab?.classList.add('now');
+  if(g.row!==currentRow){
+    currentRow=g.row;
+    if(follow) rows[g.row].el.scrollIntoView({block:'nearest', behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  }
+}
+
+function setStatus(text, count){
+  statusEl.textContent=text; statusEl.classList.toggle('count', !!count);
+}
+function update(follow){
+  const t=audio.currentTime, b=beatOf(t);
+  const i=noteAt(b);
+  mark(i, follow);
+  if(b<0){
+    const left=Math.ceil(-b-.02);
+    if(t<4) setStatus('Eerst de begintoon: do');
+    else if(left<=4 && !audio.paused) setStatus(String(left), true);
+    else setStatus(audio.paused ? 'Klaar om te beginnen' : 'Voorspel… luister mee');
+  } else if(i>=0){
+    const m=NOTES[i].measure;
+    setStatus(b>=104 ? 'Klaar! Goed gedaan' : `Maat ${m+1} van ${MEASURES.length}`);
+  }
+}
+
+function loop(){
+  if(loopRow>=0 && !audio.paused){
+    const r=rows[loopRow], end=timeOf(NOTES[r.last].beat+NOTES[r.last].len);
+    if(audio.currentTime>=end) audio.currentTime=Math.max(0,timeOf(NOTES[r.first].beat-LEAD));
+  }
+  update(true);
+  if(!audio.paused) requestAnimationFrame(loop);
+}
+
+const PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg><span>Speel</span>';
+const PAUSE='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg><span>Pauze</span>';
+function syncPlay(){ playBtn.innerHTML=audio.paused?PLAY:PAUSE; }
+audio.addEventListener('play',()=>{ syncPlay(); requestAnimationFrame(loop); });
+audio.addEventListener('pause',syncPlay);
+audio.addEventListener('ended',()=>{ syncPlay(); update(false); });
+audio.addEventListener('error',()=>setStatus('Het muziekbestand ontbreekt'));
+playBtn.addEventListener('click',()=>{ if(audio.paused) audio.play().catch(()=>{}); else audio.pause(); });
+document.getElementById('restart').addEventListener('click',()=>{
+  audio.currentTime=0; currentRow=-1; mark(-1); update(false);
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+// Tik op een noot: één maat ervoor instappen, zodat ze de aanloop hoort.
+scoreEl.addEventListener('click',e=>{
+  const h=e.target.closest('.hit'); if(!h) return;
+  const i=+h.dataset.i;
+  audio.currentTime=Math.max(0,timeOf(NOTES[i].beat-LEAD));
+  if(loopRow>=0) loopRow=groups[i].row;
+  update(false); mark(i,false);
+  if(audio.paused) audio.play().catch(()=>{});
+});
+
+loopBtn.addEventListener('click',()=>{
+  const on=loopBtn.getAttribute('aria-pressed')!=='true';
+  loopBtn.setAttribute('aria-pressed',on);
+  loopRow = on ? Math.max(0,currentRow) : -1;
+  if(on && current<0) audio.currentTime=Math.max(0,timeOf(-LEAD));
+});
+
+// Tempo: trager afspelen zonder dat de toonhoogte verandert.
+const RATES=[50,60,70,80,90,100];
+const speedEl=document.getElementById('speed');
+let rate=+load('n20-rate','70'); if(!RATES.includes(rate)) rate=70;
+function setRate(r){
+  rate=r; save('n20-rate',r);
+  audio.preservesPitch=true; audio.webkitPreservesPitch=true;
+  audio.playbackRate=r/100; audio.defaultPlaybackRate=r/100;
+  speedEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.r===r));
+}
+RATES.forEach(r=>{
+  const b=document.createElement('button'); b.type='button'; b.dataset.r=r; b.textContent=r+'%';
+  b.setAttribute('aria-label',`Tempo ${r} procent`);
+  b.addEventListener('click',()=>setRate(r)); speedEl.appendChild(b);
+});
+setRate(rate);
+// Sommige browsers zetten de snelheid terug bij het laden.
+audio.addEventListener('loadedmetadata',()=>setRate(rate));
+
+const namesBtn=document.getElementById('names');
+function setNames(on){ namesBtn.setAttribute('aria-pressed',on); namesBtn.textContent=on?'Verberg namen':'Toon namen'; document.body.classList.toggle('nonames',!on); save('n20-names',on?'1':'0'); }
+namesBtn.addEventListener('click',()=>setNames(namesBtn.getAttribute('aria-pressed')!=='true'));
+setNames(load('n20-names','1')==='1');
+
+document.addEventListener('keydown',e=>{
+  if(e.key===' ' && e.target===document.body){ e.preventDefault(); playBtn.click(); }
+});
+
+let lastW=0;
+new ResizeObserver(()=>{ const w=scoreEl.clientWidth; if(Math.abs(w-lastW)>4){ lastW=w; render(); } }).observe(scoreEl);
+syncPlay();
+</script>
+</body>
+</html>
