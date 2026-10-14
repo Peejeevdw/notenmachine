@@ -24,7 +24,7 @@ body{margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-fa
 button{font:inherit; color:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; cursor:pointer}
 button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 
-main{max-width:760px; margin:0 auto; padding:20px 16px calc(230px + env(safe-area-inset-bottom,0px))}
+main{max-width:1080px; margin:0 auto; padding:20px 16px calc(230px + env(safe-area-inset-bottom,0px))}
 header{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:12px}
 .eyebrow{font-size:.8rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--sub)}
 h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
@@ -33,9 +33,11 @@ h1{margin:0; font-size:2rem; font-weight:700; line-height:1.05}
 .tip{margin:0 2px 12px; font-size:.95rem; color:var(--sub)}
 
 /* Partituur: wit blad, ook in donkere modus, zoals de kaartjes in de Notenmachine. */
-.score{display:flex; flex-direction:column; gap:2px; padding:8px 6px; background:#fff; border-radius:18px; box-shadow:0 3px 0 var(--line)}
+.score{display:flex; flex-direction:column; gap:2px; padding:8px 6px; overflow-x:auto; overscroll-behavior-x:contain; background:#fff; border-radius:18px; box-shadow:0 3px 0 var(--line)}
 .row{scroll-margin:90px 0 240px}
-.row svg{display:block; width:100%; height:auto}
+.row svg{display:block; height:auto}
+.dyn{fill:#1B1A2E; font:italic 700 18px "Times New Roman", Georgia, serif}
+.dyn.word{font-size:15px; font-weight:400}
 .hit{fill:transparent; stroke:none; cursor:pointer}
 .mark{fill:#1B1A2E; font:italic 600 13px "Baloo 2", ui-rounded, system-ui, sans-serif}
 .vf-stavenote.now *{fill:var(--c); stroke:var(--c)}
@@ -108,11 +110,27 @@ const NAMES = {c:'do', d:'re', e:'mi', f:'fa', g:'sol', a:'la', b:'si'};
 // Overgenomen uit het boek (2/4). Per maat: toonhoogte/duur, r = rust, qd = gepunte kwart.
 const A = ['c4/qd g4/8','c4/qd g4/8','c4/8 d4/8 e4/8 f4/8','g4/q r/q','a4/8 b4/8 c5/8 a4/8','g4/8 e4/8 d4/8 c4/8','d4/q g4/q','g4/h'];
 const B = ['c4/qd g4/8','c4/qd g4/8','c4/8 d4/8 e4/8 f4/8','g4/q r/q','a4/8 b4/8 c5/8 a4/8','g4/8 e4/8 d4/8 c4/8','d4/8 c4/8 b3/8 d4/8','c4/q r/q'];
-const C = ['d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','a4/8 b4/8 c5/8 b4/8','a4/8 g4/8 a4/q','d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','c5/8 d5/8 c5/8 b4/8','a4/q b4/q'];
-const D = ['d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','a4/8 b4/8 c5/8 b4/8','a4/8 g4/8 a4/q','a4/8 b4/8 c5/q','a4/8 g4/8 g4/8 b4/8','g4/q! g4/q!','g4/q! g4/q!'];
+const C = ['d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','a4/8 b4/8 c5/8 b4/8','a4/8 g4/8 a4/q','d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','c5/8 d5/8 c5/8 b4/8','a4/q a4/q'];
+const D = ['d4/8 e4/8 d4/8 e4/8','d4/8 g4/8 b4/q','a4/8 b4/8 c5/8 b4/8','a4/8 g4/8 a4/q','a4/8 b4/8 c5/q','c5/8 b4/8 a4/8 b4/8','g4/q! g4/q!','g4/q! g4/q!'];
 const E = ['d4/8 c4/8 b3/8 d4/8','c4/q r/q','d5/8 c5/8 b4/8 d5/8','c5/q r/q'];
 const MEASURES = [...A, ...B, ...C, ...D, ...A, ...B, ...E];
-const TEXT = {0:'Allegro giocoso', 30:'rall.', 32:'a tempo'};
+const TEXT = {0:'Allegro giocoso', 32:'A Tempo'};
+// Onder de notenbalk, zoals in het boek.
+const BELOW = {0:['f'], 30:['ff','rallentando'], 32:['f'], 48:['p'], 50:['ff']};
+// Regels zoals in het boek: zes regels van 8 maten, de laatste van 4.
+const ROWS = [8,8,8,8,8,8,4];
+// Maten waar het boek de balk onder de noten zet terwijl de regel anders 'omhoog' zou geven.
+const STEMS_DOWN = [28];
+// Bogen: [maat, noot] tot [maat, noot], boven of onder.
+const SLURS = [
+  [[0,0],[3,0]], [[4,0],[5,3]],
+  [[8,0],[11,0]], [[12,0],[15,0]],
+  [[16,0],[19,2]], [[20,0],[23,0],'boven'],
+  [[24,0],[27,2]], [[28,0],[29,3],'boven'],
+  [[32,0],[35,0]], [[36,0],[37,3]],
+  [[40,0],[43,0]], [[44,0],[47,0]],
+  [[48,0],[49,0]], [[50,0],[51,0],'boven'],
+];
 
 // Tijdstip (s) van elke tel in de opname, gemeten op de begeleiding. Tel 0 = eerste noot.
 const BEATS = [21.35,22.07,22.78,23.50,24.21,24.94,25.65,26.37,27.09,27.79,28.51,29.23,29.94,30.66,31.38,32.11,32.82,33.53,34.24,34.96,35.68,36.40,37.12,37.84,38.56,39.26,39.97,40.70,41.41,42.13,42.85,43.57,44.28,45.00,45.71,46.43,47.15,47.88,48.59,49.31,50.03,50.74,51.46,52.16,52.88,53.60,54.32,55.04,55.76,56.47,57.18,57.90,58.62,59.34,60.06,60.78,61.49,62.21,62.91,63.65,64.35,65.07,65.79,66.51,67.23,67.94,68.65,69.37,70.09,70.81,71.52,72.24,72.97,73.68,74.39,75.09,75.82,76.53,77.26,77.98,78.69,79.40,80.12,80.84,81.56,82.28,83.00,83.72,84.43,85.15,85.86,86.56,87.28,88.02,88.74,89.45,90.17,90.88,91.59,92.29,93.03,93.75,94.47,95.19,95.91];
@@ -160,29 +178,45 @@ let current=-1, currentRow=-1, loopRow=-1;
 
 function render(){
   const avail=scoreEl.clientWidth-12;
-  // Iets groter tekenen dan VexFlow standaard; op smalle schermen 2 maten per regel.
-  const zoom=avail<500 ? 1.25 : 1.15;
-  const W=Math.floor(avail/zoom), H=150;
-  const perRow=W>=470 ? 4 : 2;
+  // Breedte per maat volgens het aantal noten, zodat elke regel past zoals in het boek.
+  const count=mi=>NOTES.filter(n=>n.measure===mi).length;
+  const mwOf=mi=>16+30*count(mi);
+  const lines=[]; { let m=0; ROWS.forEach(n=>{ lines.push([m,m+n]); m+=n; }); }
+  const widths=lines.map(([a,b],li)=>(li===0?62:40)+8+Array.from({length:b-a},(_,k)=>mwOf(a+k)).reduce((x,y)=>x+y,0));
+  const widest=Math.max(...widths);
+  // Liever iets scrollen dan noten te klein maken op een smal scherm.
+  const zoom=Math.max(0.9, Math.min(1.3, avail/widest));
+  const H=178;
   scoreEl.innerHTML=''; rows=[]; groups=[];
-  for(let start=0; start<MEASURES.length; start+=perRow){
+  const where={}; // "maat,noot" -> {vf, row}
+  lines.forEach(([start,stop],li)=>{
+    // Volle regels even breed uitvullen, zoals in het boek; de korte slotregel niet.
+    const fixed=(li===0?62:40)+8, last=li===lines.length-1;
+    const k=last ? 1 : (widest-fixed)/(widths[li]-fixed);
+    const W=last ? widths[li] : widest;
     const div=document.createElement('div'); div.className='row'; scoreEl.appendChild(div);
     const r=new VF.Renderer(div, VF.Renderer.Backends.SVG); r.resize(W,H);
     const ctx=r.getContext();
-    const ms=MEASURES.slice(start,start+perRow);
-    const extra=start===0 ? 62 : 40;
-    const mw=(W-6-extra)/perRow;
-    let x=2; const rowNotes=[], marks=[];
-    ms.forEach((_,k)=>{
-      const mi=start+k, first=k===0;
-      const st=new VF.Stave(x, 6, mw+(first?extra:0));
+    const extra=li===0 ? 62 : 40;
+    let x=2; const rowNotes=[], marks=[], below=[];
+    for(let mi=start; mi<stop; mi++){
+      const first=mi===start, mw=mwOf(mi)*k+(first?extra:0);
+      const st=new VF.Stave(x, 6, mw);
       if(first) st.addClef('treble');
       if(mi===0) st.addTimeSignature('2/4');
       if(mi===MEASURES.length-1) st.setEndBarType(VF.BarlineType.END);
       st.setContext(ctx).draw();
       const own=NOTES.map((n,i)=>({n,i})).filter(o=>o.n.measure===mi);
-      const vfn=own.map(({n})=>{
-        const s=new VF.StaveNote({keys:[n.rest?'b/4':n.p[0]+'/'+n.p[1]], duration:n.d.replace('d','')+(n.rest?'r':''), dots:n.d.endsWith('d')?1:0, auto_stem:true});
+      // Steelrichting zelf kiezen, zoals in het boek: anders draait de balk de steel om
+      // en blijft het bolletje aan de verkeerde kant staan.
+      const pos=n=>'cdefgab'.indexOf(n.p[0])+7*(+n.p[1])-34; // 0 = middelste lijn (si)
+      const dirs=own.map(({n})=>n.rest?1:(pos(n)>0?-1:1));
+      { let run=[];
+        const close=()=>{ if(run.length>1){ const avg=run.reduce((t,k)=>t+pos(own[k].n),0)/run.length;
+          const d=(avg>=0 || STEMS_DOWN.includes(mi)) ? -1 : 1; run.forEach(k=>dirs[k]=d); } run=[]; };
+        own.forEach(({n},k)=>{ if(n.d==='8' && !n.rest) run.push(k); else close(); }); close(); }
+      const vfn=own.map(({n},k)=>{
+        const s=new VF.StaveNote({keys:[n.rest?'b/4':n.p[0]+'/'+n.p[1]], duration:n.d.replace('d','')+(n.rest?'r':''), dots:n.d.endsWith('d')?1:0, stem_direction:dirs[k]});
         if(n.d.endsWith('d')) VF.Dot.buildAndAttach([s],{all:true});
         if(n.acc) s.addModifier(new VF.Articulation('a>').setPosition(VF.Modifier.Position.ABOVE),0);
         return s;
@@ -194,12 +228,33 @@ function render(){
       if(run.length>1) beams.push(new VF.Beam(run));
       new VF.Formatter().joinVoices([voice]).format([voice], st.getNoteEndX()-st.getNoteStartX()-12);
       voice.draw(ctx,st); beams.forEach(b=>b.setContext(ctx).draw());
-      own.forEach((o,k)=>rowNotes.push({i:o.i, vf:vfn[k], stave:st}));
+      own.forEach((o,k)=>{ rowNotes.push({i:o.i, vf:vfn[k], stave:st}); where[mi+','+k]=vfn[k]; });
       if(TEXT[mi]) marks.push({text:TEXT[mi], x:st.getNoteStartX()+2, y:st.getYForLine(0)-(own.some(o=>o.n.acc)?30:16)});
-      x+=mw+(first?extra:0);
+      if(BELOW[mi]) below.push({items:BELOW[mi], x:vfn[0].getNoteHeadBeginX()-2});
+      x+=mw;
+    }
+    // Bogen binnen deze regel.
+    SLURS.forEach(([[m1,n1],[m2,n2],pos])=>{
+      if(m1<start || m1>=stop) return;
+      const a=where[m1+','+n1], b=where[m2+','+n2];
+      const span=b.getAbsoluteX()-a.getAbsoluteX(), bend=Math.min(22, 8+span/25);
+      if(pos!=='boven'){
+        const P=VF.Curve.Position;
+        new VF.Curve(a, b, {position:P.NEAR_HEAD, position_end:P.NEAR_HEAD, cps:[{x:0,y:bend},{x:0,y:bend}]}).setContext(ctx).draw();
+        return;
+      }
+      // Boog boven de noten: boven kop of steel, wat het hoogst staat.
+      const top=n=>{ const e=n.getStemExtents(); return Math.min(e.topY, e.baseY, ...n.getYs()); };
+      const cx=n=>(n.getNoteHeadBeginX()+n.getNoteHeadEndX())/2;
+      const x1=cx(a), x2=cx(b), y1=top(a)-6, y2=top(b)-6, peak=Math.min(y1,y2)-bend;
+      ctx.beginPath(); ctx.moveTo(x1,y1);
+      ctx.bezierCurveTo(x1+span*.25, peak, x2-span*.25, peak, x2, y2);
+      ctx.bezierCurveTo(x2-span*.25, peak-2.5, x1+span*.25, peak-2.5, x1, y1);
+      ctx.fill();
     });
     const svg=div.querySelector('svg');
-    svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width=''; svg.style.height='';
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.height='';
+    svg.style.width=Math.round(W*zoom)+'px';
     svg.querySelectorAll('[fill="black"]').forEach(n=>n.setAttribute('fill','#1B1A2E'));
     svg.querySelectorAll('[stroke="black"]').forEach(n=>n.setAttribute('stroke','#1B1A2E'));
     const heads=[...svg.querySelectorAll('.vf-stavenote')];
@@ -207,6 +262,7 @@ function render(){
     const labY=rowNotes[0].stave.getYForLine(4)+46;
     const ri=rows.length;
     marks.forEach(m=>{ const t=document.createElementNS(NS,'text'); t.setAttribute('class','mark'); t.setAttribute('x',m.x); t.setAttribute('y',m.y); t.textContent=m.text; svg.appendChild(t); });
+    below.forEach(m=>{ let bx=m.x; m.items.forEach(word=>{ const t=document.createElementNS(NS,'text'); t.setAttribute('class','dyn'+(word.length>2?' word':'')); t.setAttribute('x',bx); t.setAttribute('y',labY+28); t.textContent=word; svg.appendChild(t); bx+=word.length>2?0:34; }); });
     rowNotes.forEach((o,k)=>{
       const n=NOTES[o.i], cx=(o.vf.getNoteHeadBeginX()+o.vf.getNoteHeadEndX())/2;
       const g={head:heads[k], lab:null, row:ri};
@@ -229,7 +285,7 @@ function render(){
       svg.appendChild(hit);
     });
     rows.push({el:div, first:rowNotes[0].i, last:rowNotes[rowNotes.length-1].i});
-  }
+  });
   const c=current; current=-1; mark(c, false);
 }
 
@@ -242,6 +298,10 @@ function mark(i, follow){
   if(g.row!==currentRow){
     currentRow=g.row;
     if(follow) rows[g.row].el.scrollIntoView({block:'nearest', behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  }
+  if(follow && g.head && scoreEl.scrollWidth>scoreEl.clientWidth){
+    const h=g.head.getBoundingClientRect(), b=scoreEl.getBoundingClientRect();
+    if(h.left<b.left+40 || h.right>b.right-40) scoreEl.scrollBy({left:h.left-b.left-b.width/3, behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
   }
 }
 
